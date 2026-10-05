@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Aprende Jugando</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <div class="hud">
+      <h2 id="ttl">Aprende Jugando</h2>
+      <button class="btn" id="home" style="display:none" aria-label="Menú">🏠 Menú</button>
+    </div>
+
+    <section class="screen on" id="s0">
+      <h1>ESCOJE UN JUEGO</h1>
+      <div class="menu">
+        <button class="mcard" data-g="1"><span>🍎</span>Memorama</button>
+        <button class="mcard" data-g="2"><span>🔺</span>Encaja las Figuras</button>
+        <button class="mcard" data-g="3"><span>💬</span>Ordena las Sílabas</button>
+      </div>
+    </section>
+
+    <section class="screen" id="s1">
+      <div class="msg" id="m1">Toca una carta</div>
+      <div class="board" id="b1"></div>
+      <div class="row">
+        <button class="btn" id="again1" style="display:none">🔁 Jugar de nuevo</button>
+      </div>
+    </section>
+
+    <section class="screen" id="s2">
+      <div class="msg" id="m2">Arrastra o toca una figura y luego su silueta</div>
+      <div class="row" id="holes"></div>
+      <div class="row" id="pcs"></div>
+      <div class="row">
+        <button class="btn" id="again2" style="display:none">🔁 Jugar de nuevo</button>
+      </div>
+    </section>
+
+    <section class="screen" id="s3">
+      <div class="stage" id="stage">
+        <div class="lives" id="lives"></div>
+        <div class="hero" id="hero"></div>
+        <div class="drop" id="drop"></div>
+        <div class="bub" id="bub"></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
