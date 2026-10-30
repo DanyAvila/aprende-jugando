@@ -23,14 +23,93 @@ const pop = () => tone(620, .1);
 const win = () => [523, 659, 784, 1046].forEach((f, i) => tone(f, .25, 'triangle', i * .14));
 const oops = () => tone(220, .25, 'sine');
 
-function say(t) {
-  try {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = 'es-MX';
-    u.rate = .85;
-    speechSynthesis.speak(u);
-  } catch (e) {}
+/* =====================================================
+   CONFIGURACIÓN DE VOZ Y PAUSAS  (aquí cambias todo)
+   ===================================================== */  
+const VOZ = {
+  idioma: 'es-MX',   // 'es-MX' México · 'es-ES' España · 'es-US' EE.UU.
+  nombre: '',        // nombre exacto de una voz instalada ('' = automática)
+  velocidad: 0.85,   // 0.5 muy lenta · 1 normal · 1.5 rápida
+  tono: 1,           // 0 grave · 1 normal · 2 agudo
+  volumen: 1,        // de 0 a 1
+  silencio: false    // true = apaga TODA la voz del navegador
+};
+
+const PAUSAS = {            // todo en milisegundos (1000 = 1 segundo)
+  entreLetras: 65,         // pausa entre letra y letra al deletrear
+  antesDePalabra: 600,      // pausa entre la última letra y la palabra completa
+  despuesDeHablar: 150,    // espera, ya terminada la voz, antes de pasar al siguiente nivel
+};
+
+let voces = [];
+function cargarVoces() { try { voces = speechSynthesis.getVoices(); } catch (e) {} }
+if ('speechSynthesis' in window) { cargarVoces(); speechSynthesis.onvoiceschanged = cargarVoces; }
+
+function vozElegida() {
+  if (!voces.length) cargarVoces();
+  if (VOZ.nombre) { const v = voces.find(x => x.name === VOZ.nombre); if (v) return v; }
+  return voces.find(x => x.lang === VOZ.idioma) || voces.find(x => x.lang.startsWith('es')) || null;
+}
+
+// Para ver las voces de tu computadora: escribe  verVoces()  en la Consola (F12)
+window.verVoces = () => { 
+  cargarVoces();
+  voces.filter(v => v.lang.startsWith('es')).forEach(v => console.log(v.name + '  (' + v.lang + ')'));
+};
+
+silencio: true
+
+// Habla y ESPERA a que termine (sirve con await)
+function decir(t) {
+  return new Promise(res => {
+    if (VOZ.silencio || !('speechSynthesis' in window)) return res();
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(t);
+      u.lang = VOZ.idioma; u.rate = VOZ.velocidad; u.pitch = VOZ.tono; u.volume = VOZ.volumen;
+      const v = vozElegida(); if (v) u.voice = v;
+      let tm;
+      const fin = () => { clearTimeout(tm); res(); };
+      tm = setTimeout(fin, 12000);   // por si el navegador nunca avisa que terminó
+      u.onend = fin; u.onerror = fin;
+      speechSynthesis.speak(u);
+    } catch (e) { res(); }
+  });
+}
+
+// Habla sin esperar
+function say(t) { decir(t); }
+
+// Reproduce un mp3 tuyo y ESPERA a que termine. Si no existe, usa la voz con el texto de respaldo.
+// Ejemplo:  await audio('Incorrecto', 'Incorrecto');   (busca Incorrecto.mp3)
+function audio(archivo, respaldo) {
+  return new Promise(res => {
+    let listo = false;
+    const fin = () => { if (!listo) { listo = true; res(); } };
+    const plan_b = () => { if (!listo) decir(respaldo || '').then(fin); };
+    try {
+      speechSynthesis.cancel();
+      if (audioActual) audioActual.pause();
+      audioActual = new Audio(archivo + '.mp3');
+      audioActual.onended = fin;
+      audioActual.onerror = plan_b;
+      audioActual.play().catch(plan_b);
+    } catch (e) { fin(); }
+  });
+}
+
+// Deletrea letra por letra con pausas y al final dice la palabra
+async function deletrear(palabra) {
+  const my = gen;
+  for (const letra of palabra) {
+    if (my !== gen) return;
+    await decir(letra.toUpperCase());
+    await wait(PAUSAS.entreLetras);
+  }
+  if (my !== gen) return;
+  await wait(PAUSAS.antesDePalabra);
+  if (my !== gen) return;
+  await decir(palabra[0].toUpperCase() + palabra.slice(1));
 }
 
 let audioActual = null;  //CAMBIOOO DE AUDIOO
@@ -88,7 +167,7 @@ document.querySelectorAll('.mcard').forEach(b => b.onclick = () => {
   [0, g1, g2, g3, g4, g5][g]();
 });
 
-/* ---- Juego 1 ---- */
+/* ---- Juego 1 ---- */ /*EVIDENCIA DE QUE AQUI ESTA LO QUE PROGRAME PARA EL PRIMER JUEGO (DANIELA)*/
 const FR = [
   ['🍎', 'Manzana'], ['🍌', 'Plátano'], ['🍇', 'Uva'], ['🍐', 'Pera'],
   ['🍊', 'Naranja'], ['🍓', 'Fresa'], ['🍉', 'Sandia'], ['🍍', 'Piña'],
@@ -98,7 +177,7 @@ const FR = [
 const NIVELES = [
   { nombre: 'Fácil',   pares: 4,  cols: 4 },  // 8 cartas
   { nombre: 'Medio',   pares: 8,  cols: 4 },  // 16 cartas
-  { nombre: 'Difícil', pares: 12, cols: 6 }   // 24 cartas
+ 
 ];
 let nivel = 0, total = 4;
 let open1 = [], lock = false, found = 0;
@@ -117,6 +196,8 @@ function g1(n = 0) {
   $('b1').style.setProperty('--cols', NIVELES[n].cols);
   $('b1').style.maxWidth = NIVELES[n].cols === 6 ? '760px' : '560px';
   $('b1').innerHTML = '';
+
+  
 
   const set = shuf(FR).slice(0, total);
   shuf([...set, ...set]).forEach(f => {
@@ -306,6 +387,8 @@ const PAL = [
   { p: 'gato', s: ['ga', 'to'], f: 'j', c: '🐱' }
   
 
+  
+
 ];
 
 let lv = 0, lives = 3, pick = [], busy = false;
@@ -378,9 +461,9 @@ async function check() {
     $('drop').classList.add('ok');
     win();
     confetti();
-    const N = w.p[0].toUpperCase() + w.p.slice(1);
-    say('¡' + w.p.toUpperCase().split('').join(', ') + '! ¡' + N + '!');
-    await wait(3200);
+    await deletrear(w.p);            // espera a que termine de deletrear
+    if (my !== gen) return;
+    await wait(PAUSAS.despuesDeHablar);
     if (my !== gen) return;
 
     if (++lv >= PAL.length) {
@@ -409,7 +492,8 @@ async function check() {
 }
 
 
-/* ---- Juego 4: Sumas divertidas ---- */
+/* ---- Juego 4: Sumas divertidas ---- */ /*AQUI MUEVELE BRANDON*/ /*ya le movi xd*/
+
 // e = emoji, a = primer grupo, b = segundo grupo. Cambia el orden o los números aquí.
 const SUMAS = [
   { e: '🍎', a: 2, b: 4 },
@@ -417,11 +501,11 @@ const SUMAS = [
   { e: '😊', a: 3, b: 2 },
   { e: '🌸', a: 5, b: 1 },
   { e: '❤️', a: 4, b: 3 },
-  { e: '🐸', a: 2, b: 3 },
+  { e: '🐸', a: 2, b: 3 },/*SON MUY POQUITOS AGREGA MAS*/
   { e: '✏️', a: 6, b: 1 },
   { e: '🦋', a: 3, b: 2 },
   { e: '🟣', a: 4, b: 4 },
-  { e: '☀️', a: 2, b: 3 }
+  { e: '☀️', a: 2, b: 3 } /*Ya le agrege, asi o mas?*/ /*asi*/
 ];
 let n4 = 0, busy4 = false;
 
@@ -492,8 +576,9 @@ async function responder(t, v, r) {
     $('box').classList.add('ok');
     t.style.visibility = 'hidden';
     win();
-    say('¡Muy bien! ' + s.a + ' más ' + s.b + ' son ' + r);
-    await wait(2800);
+    await decir('¡Muy bien! ' + s.a + ' más ' + s.b + ' son ' + r);
+    if (my !== gen) return;
+    await wait(PAUSAS.despuesDeHablar);
     if (my !== gen) return;
     if (++n4 >= SUMAS.length) {
       confetti();
